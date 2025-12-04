@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// SITE MODEL - Core land parcel entity
+// ============================================================================
+model Site {
+  id             String           @id @default(uuid())
+  name           String
+  addressLine1   String
+  city           String
+  state          String
+  zip            String
+  latitude       Float?          
+  longitude      Float?
+  county         String?
+  ahj            String?          // authority having jurisdiction
+  sizeAcres      Decimal
+  sizeSf         Decimal
+  askPriceTotal  Decimal
+  askPricePerSf  Decimal
+  brokerName     String?
+  brokerCompany  String?
+  brokerEmail    String?
+  listingUrl     String?
+  status         SiteStatus       @default(NEW)
+  notesInternal  String?
+
+  // Relations
+  constraints    SiteConstraints?
+  utilities      SiteUtilities?
+  demographics   Demographics[]
+  programFlags   ProgramFlags?
+  rentComps      RentComp[]
+  scenarios      Scenario[]
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Indexes for query performance
+  @@index([status])
+  @@index([city])
+  @@index([state])
+  @@index([county])
+  @@index([state, city]) // Composite index for location queries
+  @@map("sites")
+}
+
+enum SiteStatus {
+  NEW
+  UNDERWRITING
+  PASSED
+  LOI
+  UNDER_CONTRACT
+  CLOSED
+}
+
+// ============================================================================
+// SITE CONSTRAINTS - Zoning, restrictions, and regulatory info
+// ============================================================================
+model SiteConstraints {
+  id                       String   @id @default(uuid())
+  site                     Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                   String   @unique
+  detentionRequired        Boolean?
+  detentionNotes           String?
+  canBreakGroundAfter      DateTime?
+  zoningType               String?
+  deedRestrictionsText     String?
+  floodZoneCode            String?
+  floodSource              String?
+  schoolDistrictName       String?
+  schoolDistrictRatingSource String?
+  schoolDistrictRatingValue  String?
+
+  @@map("site_constraints")
+}
+
+// ============================================================================
+// SITE UTILITIES - Infrastructure and tax information
+// ============================================================================
+model SiteUtilities {
+  id                    String   @id @default(uuid())
+  site                  Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                String   @unique
+  waterProvider         String?
+  sewerProvider         String?
+  mudName               String?
+  taxRateTotal          Decimal?
+  taxRateSourceUrl      String?
+  taxRateLastCheckedAt  DateTime?
+
+  @@map("site_utilities")
+}
+
+// ============================================================================
+// DEMOGRAPHICS - Population and income data at various radii
+// ============================================================================
+model Demographics {
+  id                     String   @id @default(uuid())
+  site                   Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                 String
+  radiusMiles            Decimal
+  medianHouseholdIncome  Decimal?
+  population             Decimal?
+  source                 String
+  asOfYear               Int
+
+  @@map("demographics")
+}
+
+// ============================================================================
+// PROGRAM FLAGS - Tax credit and incentive program eligibility
+// ============================================================================
+model ProgramFlags {
+  id                         String   @id @default(uuid())
+  site                       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                     String   @unique
+  inLihtcQct                 Boolean  @default(false)
+  inLihtcDda                 Boolean  @default(false)
+  qctZcta                    String?
+  inOpportunityZone          Boolean  @default(false)
+  ozTractId                  String?
+  programFlagsLastCheckedAt  DateTime?
+
+  @@map("program_flags")
+}
+
+// ============================================================================
+// RENT COMPS - Comparable rental properties
+// ============================================================================
+model RentComp {
+  id              String     @id @default(uuid())
+  site            Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId          String
+  compName        String
+  compType        CompType
+  averageRentPsf  Decimal?
+  rentRangeLow    Decimal?
+  rentRangeHigh   Decimal?
+  source          String?
+  distanceMiles   Decimal?
+  notes           String?
+  url             String?
+
+  // Index for filtering by comp type
+  @@index([compType])
+  @@map("rent_comps")
+}
+
+enum CompType {
+  MF   // Multifamily
+  BTR  // Build-to-Rent
+}
+
+// ============================================================================
+// SCENARIOS - Development scenarios and proformas
+// ============================================================================
+model Scenario {
+  id                    String         @id @default(uuid())
+  site                  Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                String
+  scenarioType          ScenarioType
+  assumedUnits          Int
+  assumedNetAcres       Decimal?
+  densityUnitsPerAcre   Decimal?
+  landPricePerDoor      Decimal?
+  proformaLink          String?
+  status                ScenarioStatus @default(TODO)
+  summaryMetricsJson    Json?          // Flexible JSON for key metrics
+
+  // Indexes for filtering scenarios
+  @@index([scenarioType])
+  @@index([status])
+  @@map("scenarios")
+}
+
+enum ScenarioType {
+  MF_GARDEN_MARKET
+  MF_GARDEN_LIHTC
+  BTR_DUPLEX
+  BTR_ROW_TOWNHOME
+}
+
+enum ScenarioStatus {
+  TODO
+  NEEDS_UPDATE
+  DONE
+}
