@@ -1,0 +1,24 @@
+PROPERTY NAME: Downtown Austin Development Site
+ADDRESS: 1234 Congress Avenue, Austin, TX 78701
+PROPERTY SIZE: 8.5 acres  
+ASKING PRICE: $12,500,000
+LISTING PRICE: $12,500,000
+
+BROKER INFORMATION:
+Name: John Smith
+Company: Austin Commercial Realty
+Email: jsmith@austincommercial.com
+Phone: (512) 555-1234
+
+PROPERTY DETAILS:
+The subject property is an 8.5-acre development site located in the heart of downtown Austin. The site currently has minimal improvements and represents a prime opportunity for mixed-use development.
+
+UTILITIES:
+- Water: City of Austin
+- Sewer: City of Austin  
+- Electric: Available
+- Gas: Available
+
+ZONING: Mixed-Use Downtown (MU-D)
+
+This is a sample offering memorandum for testing the AI parser.
