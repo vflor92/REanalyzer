@@ -65,21 +65,54 @@ npx prisma migrate dev
 - Form validation with Zod
 - Responsive UI with shadcn/ui components
 
+### Module 3: AI-Powered Deal Intake Wizard ✅
+- **Smart PDF Parsing**: Upload OM flyers and let AI extract deal data automatically
+- **Groq Integration**: Uses Llama 3.3 70B for intelligent text extraction (free tier)
+- **Confidence Scoring**: Each field shows extraction confidence (0-1) with color-coded badges
+- **Source Verification**: View exact text snippets used for each extracted field
+- **Anti-Hallucination**: Strict prompts ensure no guessed data - only what's in the document
+- **3-Step Wizard**: Upload → Review/Edit → Confirm before saving
+- **Text Paste Mode**: Fallback option for quick text extraction
+- **Zero Cost**: Leverages Groq's generous free tier (30 requests/min, 6000/day)
+
+#### Groq API Setup
+
+1. **Get API Key**
+   - Visit https://console.groq.com/keys
+   - Sign up (no credit card required)
+   - Create new API key
+
+2. **Configure Backend**
+   ```bash
+   cd backend
+   echo "GROQ_API_KEY=your_key_here" >> .env
+   ```
+
+3. **Usage**
+   - Navigate to http://localhost:3000/sites/wizard
+   - Upload PDF or paste text
+   - Review AI-extracted fields (edit as needed)
+   - Click "Create Site" to save
+
 ### Coming Soon
-- Module 3: Advanced relationships (Demographics, RentComps, Scenarios)
-- File uploads
-- Bulk operations
+- Advanced relationships (Demographics, RentComps, Scenarios)
+- URL scraping with Puppeteer
+- Bulk/batch upload
 - Advanced analytics
 
 ## API Documentation
 
 ### Endpoints
 
+**Sites**
 - `GET /sites` - List sites with filters
 - `GET /sites/:id` - Get site details
 - `POST /sites` - Create new site
 - `PATCH /sites/:id` - Update site
 - `DELETE /sites/:id` - Delete site
+
+**AI Wizard**
+- `POST /intake/parse-om` - Parse PDF or text to extract deal data
 
 See [walkthrough.md](./docs/walkthrough.md) for detailed API documentation.
 

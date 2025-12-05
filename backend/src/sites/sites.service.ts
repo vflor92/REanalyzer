@@ -4,17 +4,22 @@ import { CreateSiteDto } from './dto/create-site.dto';
 import { UpdateSiteDto } from './dto/update-site.dto';
 import { QuerySitesDto } from './dto/query-sites.dto';
 import { Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class SitesService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private aiService: AiService,
+    ) { }
 
     /**
      * Calculate derived fields from site data
      */
     private calculateDerivedFields(sizeAcres: number, askPriceTotal: number) {
         const sizeSf = sizeAcres * 43560; // Convert acres to square feet
-        const askPricePerSf = askPriceTotal / sizeSf;
+        // Avoid division by zero
+        const askPricePerSf = sizeSf > 0 ? askPriceTotal / sizeSf : 0;
         return { sizeSf, askPricePerSf };
     }
 
@@ -82,6 +87,15 @@ export class SitesService {
             include: {
                 constraints: true,
                 utilities: true,
+                demographics: {
+                    orderBy: { radiusMiles: 'asc' },
+                },
+                programFlags: true,
+                scenarios: {
+                    orderBy: {
+                        scenarioType: 'asc',
+                    },
+                },
             },
         });
 
@@ -96,7 +110,7 @@ export class SitesService {
      * Create a new site with auto-calculated fields
      */
     async create(createSiteDto: CreateSiteDto) {
-        const { sizeAcres, askPriceTotal, constraints, utilities, ...siteData } = createSiteDto;
+        const { sizeAcres = 0, askPriceTotal = 0, constraints, utilities, ...siteData } = createSiteDto;
 
         // Calculate derived fields
         const { sizeSf, askPricePerSf } = this.calculateDerivedFields(sizeAcres, askPriceTotal);
@@ -134,19 +148,19 @@ export class SitesService {
         // Check if site exists
         const existingSite = await this.findOne(id);
 
-        const { sizeAcres, askPriceTotal, constraints, utilities, ...siteData } = updateSiteDto;
+        const { sizeAcres, askPriceTotal, constraints, utilities, floodZoneCode, floodSource, ...siteData } = updateSiteDto;
 
         // Recalculate derived fields if acres or price changed
         let sizeSf: number = Number(existingSite.sizeSf);
         let askPricePerSf: number = Number(existingSite.askPricePerSf);
 
-        const finalAcres = sizeAcres ?? existingSite.sizeAcres;
-        const finalPrice = askPriceTotal ?? existingSite.askPriceTotal;
+        const finalAcres = sizeAcres ?? Number(existingSite.sizeAcres);
+        const finalPrice = askPriceTotal ?? Number(existingSite.askPriceTotal);
 
         if (sizeAcres !== undefined || askPriceTotal !== undefined) {
             const calculated = this.calculateDerivedFields(
-                Number(finalAcres),
-                Number(finalPrice),
+                finalAcres,
+                finalPrice,
             );
             sizeSf = calculated.sizeSf;
             askPricePerSf = calculated.askPricePerSf;
@@ -163,10 +177,17 @@ export class SitesService {
         data.askPricePerSf = new Prisma.Decimal(askPricePerSf);
 
         // Handle nested updates
-        if (constraints) {
+        // Merge flood zone fields with constraints
+        const constraintsUpdate = {
+            ...constraints,
+            ...(floodZoneCode !== undefined && { floodZoneCode }),
+            ...(floodSource !== undefined && { floodSource }),
+        };
+
+        if (Object.keys(constraintsUpdate).length > 0) {
             data.constraints = existingSite.constraints
-                ? { update: constraints }
-                : { create: constraints };
+                ? { update: constraintsUpdate }
+                : { create: constraintsUpdate };
         }
 
         if (utilities) {
@@ -191,5 +212,34 @@ export class SitesService {
     async remove(id: string) {
         await this.findOne(id); // Check if exists
         return this.prisma.site.delete({ where: { id } });
+    }
+
+    /**
+     * Generate and save AI deal summary
+     */
+    async generateAndSaveSummary(id: string) {
+        const site = await this.findOne(id);
+
+        // Prepare data for AI (exclude internal IDs and timestamps where possible to save tokens)
+        // We can pass the whole object, but let's clean it up slightly if needed.
+        // For now, passing the full object is fine as Llama 3.3 has a large context window.
+        const summary = await this.aiService.generateDealSummary(site);
+
+        // Update site with new summary
+        return this.prisma.site.update({
+            where: { id },
+            data: {
+                summaryPros: summary.pros,
+                summaryCons: summary.cons,
+                summaryOverview: summary.overview,
+            },
+            include: {
+                constraints: true,
+                utilities: true,
+                demographics: true,
+                programFlags: true,
+                scenarios: true,
+            },
+        });
     }
 }

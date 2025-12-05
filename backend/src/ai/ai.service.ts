@@ -33,9 +33,9 @@ export class AiService {
 
             const prompt = createParsePrompt(text);
 
-            // Call Groq API with Llama 3.1 70B
+            // Call Groq API with Llama 3.3 70B (updated model)
             const completion = await this.groq.chat.completions.create({
-                model: 'llama-3.1-70b-versatile',
+                model: 'llama-3.3-70b-versatile',
                 messages: [
                     {
                         role: 'user',
@@ -101,6 +101,93 @@ export class AiService {
         }
 
         return result;
+    }
+
+    /**
+     * Generate a summary for a rent comp based on internal data
+     */
+    async generateCompSummary(compData: any): Promise<string> {
+        try {
+            const prompt = `
+                Summarize this property based ONLY on the provided data. 
+                Format as a 1-2 sentence description highlighting key metrics (Rent/SF, Type, Distance).
+                Do NOT invent any facts not present in the data.
+                
+                Data:
+                ${JSON.stringify(compData, null, 2)}
+            `;
+
+            const completion = await this.groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+                temperature: 0.3,
+                max_tokens: 100,
+            });
+
+            return completion.choices[0]?.message?.content || 'Unable to generate summary.';
+        } catch (error) {
+            this.logger.error('Error generating comp summary:', error);
+            throw new Error(`Failed to generate summary: ${error.message}`);
+        }
+    }
+
+    /**
+     * Generate a comprehensive deal summary for a site
+     */
+    async generateDealSummary(siteData: any): Promise<{ pros: string[]; cons: string[]; overview: string }> {
+        try {
+            const prompt = `
+                Analyze this real estate development site and provide a deal summary based ONLY on the provided data.
+                
+                Output must be a JSON object with the following structure:
+                {
+                    "pros": ["string", "string"],
+                    "cons": ["string", "string"],
+                    "overview": "string"
+                }
+
+                Guidelines:
+                1. "pros": List 3-5 key advantages (e.g., high rent comps, good location, tax incentives).
+                2. "cons": List 3-5 key risks/challenges (e.g., flood zone, low density, poor school district).
+                3. "overview": A 3-4 sentence paragraph summarizing the opportunity.
+                4. STRICTLY use the provided data. Do NOT invent facts. If data is missing, omit it.
+                
+                Data:
+                ${JSON.stringify(siteData, null, 2)}
+            `;
+
+            const completion = await this.groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+                temperature: 0.2,
+                max_tokens: 1024,
+                response_format: { type: 'json_object' },
+            });
+
+            const content = completion.choices[0]?.message?.content;
+            if (!content) throw new Error('No content received from AI');
+
+            const parsed = JSON.parse(content);
+            return {
+                pros: Array.isArray(parsed.pros) ? parsed.pros : [],
+                cons: Array.isArray(parsed.cons) ? parsed.cons : [],
+                overview: typeof parsed.overview === 'string' ? parsed.overview : '',
+            };
+
+        } catch (error) {
+            this.logger.error('Error generating deal summary:', error);
+            throw new Error(`Failed to generate deal summary: ${error.message}`);
+        }
     }
 
     /**

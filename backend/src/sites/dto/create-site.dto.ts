@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsNumber, IsPositive, IsEnum, ValidateNested, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsOptional, IsNumber, IsPositive, IsEnum, ValidateNested, IsBoolean, IsDateString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { SiteStatus } from '@prisma/client';
 
@@ -110,17 +110,17 @@ export class CreateSiteDto {
     @IsString()
     ahj?: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @Type(() => Number)
     @IsNumber()
-    @IsPositive()
-    sizeAcres: number;
+    @Min(0)
+    sizeAcres?: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @Type(() => Number)
     @IsNumber()
-    @IsPositive()
-    askPriceTotal: number;
+    @Min(0)
+    askPriceTotal?: number;
 
     @IsOptional()
     @IsString()
@@ -137,6 +137,14 @@ export class CreateSiteDto {
     @IsOptional()
     @IsString()
     listingUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    floodZoneCode?: string;
+
+    @IsOptional()
+    @IsString()
+    floodSource?: string;
 
     @IsOptional()
     @IsEnum(SiteStatus)

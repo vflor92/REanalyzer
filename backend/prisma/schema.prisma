@@ -33,6 +33,11 @@ model Site {
   listingUrl     String?
   status         SiteStatus       @default(NEW)
   notesInternal  String?
+  
+  // AI Summary
+  summaryPros    String[]
+  summaryCons    String[]
+  summaryOverview String?
 
   // Relations
   constraints    SiteConstraints?

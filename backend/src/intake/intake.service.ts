@@ -53,10 +53,12 @@ export class IntakeService {
     }
 
     /**
-     * Extract text from PDF buffer using pdf-parse
-     */
+   * Extract text from PDF buffer using pdf-parse
+   */
     private async extractTextFromPdf(buffer: Buffer): Promise<string> {
         try {
+            // Use require for CommonJS module (pdf-parse v1.1.1)
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const pdfParse = require('pdf-parse');
             const data = await pdfParse(buffer);
             return data.text;
